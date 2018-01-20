@@ -22,7 +22,7 @@ func WrapReadWriteSeeker(rws io.ReadWriteSeeker, block cipher.Block) io.ReadWrit
 		offset:   0,
 		source:   rws,
 		block:    block,
-		internal: make([]byte, block.BlockSize()),
+		internal: make([]byte, block.BlockSize()*64),
 	}
 }
 

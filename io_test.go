@@ -6,12 +6,13 @@ import (
 	"crypto/cipher"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/eliothedeman/randutil"
 )
 
-func randBlock(t *testing.T, size int) cipher.Block {
+func randBlock(t testing.TB, size int) cipher.Block {
 	t.Helper()
 	b, err := aes.NewCipher(randutil.Bytes(size))
 	if err != nil {
@@ -21,9 +22,9 @@ func randBlock(t *testing.T, size int) cipher.Block {
 	return b
 }
 
-func tmpFile(t *testing.T) *os.File {
+func tmpFile(t testing.TB) *os.File {
 	t.Helper()
-	f, err := ioutil.TempFile(os.TempDir(), t.Name())
+	f, err := ioutil.TempFile(os.TempDir(), strings.Replace(t.Name(), "/", "_", -1))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,4 +72,25 @@ func TestWriteSmall(t *testing.T) {
 			t.Errorf("Attempted to write %d wrote %d.", ws, x)
 		}
 	}
+}
+
+func BenchmarkWrite(b *testing.B) {
+	b.Run("1024", func(b *testing.B) {
+		x := randBlock(b, 32)
+		f := tmpFile(b)
+		r := WrapReadWriteSeeker(f, x)
+		buff := randutil.Bytes(1024)
+		for i := 0; i < b.N; i++ {
+			r.Write(buff)
+		}
+	})
+	b.Run("32", func(b *testing.B) {
+		x := randBlock(b, 32)
+		f := tmpFile(b)
+		r := WrapReadWriteSeeker(f, x)
+		buff := randutil.Bytes(32)
+		for i := 0; i < b.N; i++ {
+			r.Write(buff)
+		}
+	})
 }
