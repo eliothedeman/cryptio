@@ -1,31 +1,28 @@
 package cryptio
 
 import (
+	"crypto/cipher"
+	"fmt"
 	"io"
 )
 
 type reader struct {
 	source io.Reader
-	buffer
+	block  cipher.Block
+	*buffer
 }
 
-func (r *reader) Read(to []byte) (int, error) {
-	var x, n int
-	var err error
-	total := len(to)
-	var tmp = r.buffer.internal
-	for n < total {
-		x, err = r.source.Read(tmp[r.currentBlockOffset():])
-		if err != nil {
-			break
-		}
+func (r *reader) Read(buff []byte) (int, error) {
+	// read into the buffer
+	n, err := r.source.Read(buff)
 
-		r.offset += int64(x)
-		n += x
-		r.block.Decrypt(tmp, tmp)
-		size := copy(to, tmp[r.currentBlockOffset():])
-		to = to[size:]
-	}
-
+	block := r.block
+	offset := int(r.offset % int64(block.BlockSize()))
+	decrypt(offset, buff, block)
+	r.offset += int64(n)
 	return n, err
+}
+
+func cmpBytes(a, b []byte) {
+	fmt.Printf("\n% x\n% x\n", a, b)
 }
