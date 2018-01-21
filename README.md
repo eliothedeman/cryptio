@@ -7,5 +7,7 @@ Crypto wrappers around Go's io package interfaces
 
 
 ## Currently supported interfaces
-* ReadWriteSeeker
-  * Allows for the transparent encryption of a file in go using a generic crypto.Block cipher and an io.ReadWriteSeeker.
+- io.Reader
+- io.Writer
+- io.Seeker
+- io.ReadWriteSeeker
