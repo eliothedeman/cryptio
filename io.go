@@ -11,85 +11,110 @@ var internalBufferSize = 1024
 // buffer for encrypting and decrypting data
 type buffer struct {
 	offset   int64
-	source   io.ReadWriteSeeker
-	block    cipher.Block
 	internal []byte
 }
 
-// WrapReadWriteSeeker wraps an encrypted io.ReadWriteSeeker
-func WrapReadWriteSeeker(rws io.ReadWriteSeeker, block cipher.Block) io.ReadWriteSeeker {
+func newBuffer(size int) *buffer {
 	return &buffer{
 		offset:   0,
-		source:   rws,
-		block:    block,
-		internal: make([]byte, block.BlockSize()*64),
+		internal: make([]byte, size),
 	}
-}
-
-func (b *buffer) currentBlockOffset() int64 {
-	return b.offset % int64(b.block.BlockSize())
-}
-
-func (b *buffer) Read(to []byte) (int, error) {
-	var x, n int
-	var err error
-	total := len(to)
-	for n < total {
-		x, err = b.source.Read(b.internal[b.currentBlockOffset():])
-		if err != nil {
-			break
-		}
-
-		b.offset += int64(x)
-		n += x
-		b.block.Decrypt(b.internal, b.internal)
-		size := copy(to, b.internal[b.currentBlockOffset():])
-		to = to[size:]
-	}
-
-	return n, err
-}
-
-func (b *buffer) Write(buff []byte) (int, error) {
-	// encrypt the whole buffer
-	b.currentBlockOffset()
-
-	var n int
-	var written int
-	var err error
-	tmp := b.internal
-	for n < len(buff) {
-		offset := b.currentBlockOffset()
-		coppied := int64(copy(tmp[offset:], buff[n:]))
-
-		b.block.Encrypt(tmp, tmp)
-		written, err = b.source.Write(tmp[offset : offset+coppied])
-		if err != nil {
-			return n, err
-		}
-		b.offset += int64(written)
-		n += written
-
-	}
-
-	return n, nil
 }
 
 var (
 	errNotAbsoluteSeek = errors.New("cryptio only supports absolute seeks")
 )
 
-func (b *buffer) Seek(offset int64, whence int) (int64, error) {
+type seeker struct {
+	source io.Seeker
+	*buffer
+}
+
+func (s *seeker) Seek(offset int64, whence int) (int64, error) {
+
 	if whence != 0 {
 		return 0, errNotAbsoluteSeek
 	}
 
-	// save the previous offset incase there is an error
-	po := b.offset
-	i, err := b.source.Seek(offset, whence)
-
-	if err != nil {
-		b.offset = po
+	n, err := s.source.Seek(offset, whence)
+	if err == nil {
+		s.buffer.offset = offset
 	}
-	return i, err
+
+	return n, nil
+}
+
+// Reader creates a decrypting io.Reader
+func Reader(r io.Reader, blk cipher.Block) io.Reader {
+	return &reader{
+		source: r,
+		block:  blk,
+		buffer: newBuffer(blk.BlockSize()),
+	}
+}
+
+// Writer creates an encrypting io.Writer
+func Writer(w io.Writer, blk cipher.Block) io.Writer {
+	return &writer{
+		source: w,
+		block:  blk,
+		buffer: newBuffer(blk.BlockSize()),
+	}
+}
+
+// Seeker creates cryptio safe seeker
+func Seeker(s io.Seeker, blk cipher.Block) io.Seeker {
+	return &seeker{
+		source: s,
+		buffer: newBuffer(blk.BlockSize()),
+	}
+}
+
+type readWriter struct {
+	reader
+	writer
+}
+
+// ReadWriter creates an encrypting/decrypting ReadWriter
+func ReadWriter(rw io.ReadWriter, blk cipher.Block) io.ReadWriter {
+	buff := newBuffer(blk.BlockSize())
+	return &readWriter{
+		reader: reader{
+			source: rw,
+			block:  blk,
+			buffer: buff,
+		},
+		writer: writer{
+			source: rw,
+			block:  blk,
+			buffer: buff,
+		},
+	}
+}
+
+type readWriteSeeker struct {
+	reader
+	writer
+	seeker
+}
+
+// ReadWriteSeeker creates an encrypting/decrypting ReadWriteSeeker
+func ReadWriteSeeker(rw io.ReadWriteSeeker, blk cipher.Block) io.ReadWriteSeeker {
+	buff := newBuffer(blk.BlockSize())
+	return &readWriteSeeker{
+		reader: reader{
+			source: rw,
+			block:  blk,
+			buffer: buff,
+		},
+		writer: writer{
+			source: rw,
+			block:  blk,
+			buffer: buff,
+		},
+		seeker: seeker{
+			source: rw,
+			buffer: buff,
+		},
+	}
 }

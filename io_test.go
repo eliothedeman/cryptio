@@ -33,9 +33,9 @@ func tmpFile(t testing.TB) *os.File {
 func TestReadSmall(t *testing.T) {
 	b := randBlock(t, 32)
 	f := tmpFile(t)
-	r := WrapReadWriteSeeker(f, b)
+	r := ReadWriteSeeker(f, b)
+	want := randutil.Bytes(10)
 
-	want := randutil.Bytes(10000)
 	_, err := r.Write(want)
 
 	if err != nil {
@@ -44,22 +44,47 @@ func TestReadSmall(t *testing.T) {
 
 	got := make([]byte, len(want))
 	r.Seek(0, 0)
+
 	_, err = r.Read(got)
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	if !bytes.Equal(want, got) {
-		t.Fatalf("Wanted %x got %x", want, got)
-
+		t.Fail()
+		cmpBytes(want, got)
 	}
 
+}
+func TestReadLarge(t *testing.T) {
+	b := randBlock(t, 32)
+	f := tmpFile(t)
+	r := ReadWriteSeeker(f, b)
+
+	want := randutil.Bytes(24)
+	_, err := r.Write(want)
+
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	got := make([]byte, len(want))
+	r.Seek(0, 0)
+
+	_, err = r.Read(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !bytes.Equal(want, got) {
+		t.Fatalf("\n% x\n% x", want, got)
+	}
 }
 
 func TestWriteSmall(t *testing.T) {
 	b := randBlock(t, 32)
 	f := tmpFile(t)
-	r := WrapReadWriteSeeker(f, b)
+	r := ReadWriteSeeker(f, b)
 
 	buff := randutil.Bytes(1024)
 	for i := 0; i < 1000; i++ {
@@ -78,7 +103,7 @@ func BenchmarkWrite(b *testing.B) {
 	b.Run("1024", func(b *testing.B) {
 		x := randBlock(b, 32)
 		f := tmpFile(b)
-		r := WrapReadWriteSeeker(f, x)
+		r := ReadWriteSeeker(f, x)
 		buff := randutil.Bytes(1024)
 		for i := 0; i < b.N; i++ {
 			r.Write(buff)
@@ -87,10 +112,25 @@ func BenchmarkWrite(b *testing.B) {
 	b.Run("32", func(b *testing.B) {
 		x := randBlock(b, 32)
 		f := tmpFile(b)
-		r := WrapReadWriteSeeker(f, x)
+		r := ReadWriteSeeker(f, x)
 		buff := randutil.Bytes(32)
 		for i := 0; i < b.N; i++ {
 			r.Write(buff)
 		}
 	})
+}
+
+func TestOffset(t *testing.T) {
+	b := randBlock(t, 32)
+	x := make([]byte, 44)
+	x[22] = 6
+	b.Encrypt(x, x)
+	y := x[22]
+	b.Decrypt(x, x)
+	x[1] = 44
+	b.Encrypt(x, x)
+	z := x[22]
+	if y != z {
+		t.Fatalf("%x", x)
+	}
 }
