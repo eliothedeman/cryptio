@@ -16,7 +16,7 @@ func randBlock(t testing.TB, size int) cipher.Block {
 	t.Helper()
 	b, err := aes.NewCipher(randutil.Bytes(size))
 	if err != nil {
-		t.Fatal(t)
+		t.Fatal(err)
 	}
 
 	return b
@@ -100,20 +100,20 @@ func TestWriteSmall(t *testing.T) {
 }
 
 func BenchmarkWrite(b *testing.B) {
+	x := randBlock(b, 32)
+	f := tmpFile(b)
+	r := ReadWriteSeeker(f, x)
+	buff := randutil.Bytes(1024)
 	b.Run("1024", func(b *testing.B) {
-		x := randBlock(b, 32)
-		f := tmpFile(b)
-		r := ReadWriteSeeker(f, x)
-		buff := randutil.Bytes(1024)
 		for i := 0; i < b.N; i++ {
 			r.Write(buff)
 		}
 	})
+	x = randBlock(b, 32)
+	f = tmpFile(b)
+	r = ReadWriteSeeker(f, x)
+	buff = randutil.Bytes(32)
 	b.Run("32", func(b *testing.B) {
-		x := randBlock(b, 32)
-		f := tmpFile(b)
-		r := ReadWriteSeeker(f, x)
-		buff := randutil.Bytes(32)
 		for i := 0; i < b.N; i++ {
 			r.Write(buff)
 		}
