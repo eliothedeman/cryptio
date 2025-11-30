@@ -1,4 +1,4 @@
-[![CircleCI](https://circleci.com/gh/eliothedeman/cryptio.svg?style=svg)](https://circleci.com/gh/eliothedeman/cryptio)
+[![CI](https://github.com/eliothedeman/cryptio/actions/workflows/ci.yml/badge.svg)](https://github.com/eliothedeman/cryptio/actions/workflows/ci.yml)
 [![Go Report Card](https://goreportcard.com/badge/github.com/eliothedeman/cryptio)](https://goreportcard.com/report/github.com/eliothedeman/cryptio)
 [![GoDoc](https://godoc.org/github.com/eliothedeman/cryptio?status.svg)](https://godoc.org/github.com/eliothedeman/cryptio)
 

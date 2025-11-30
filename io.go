@@ -6,8 +6,6 @@ import (
 	"io"
 )
 
-var internalBufferSize = 1024
-
 // buffer for encrypting and decrypting data
 type buffer struct {
 	offset   int64
@@ -38,7 +36,7 @@ func (s *seeker) Seek(offset int64, whence int) (int64, error) {
 
 	n, err := s.source.Seek(offset, whence)
 	if err == nil {
-		s.buffer.offset = offset
+		s.offset = offset
 	}
 
 	return n, nil
