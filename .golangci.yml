@@ -1,8 +1,0 @@
-version: "2"
-
-linters-settings:
-  staticcheck:
-    checks: ["all", "-QF1008"]  # Disable QF1008 (embedded field selector suggestion)
-
-run:
-  timeout: 5m
